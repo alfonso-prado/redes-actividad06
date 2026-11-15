@@ -3,22 +3,28 @@ import sys
 import socket
 import ipaddress
 
+HEADER_SIZE = 16
+
 def parse_packet(IP_packet: bytes):
     ip_partes = []
 
-    # header: 4 bytes de ip, 2 de puerto y 1 de ttl
     for byte in IP_packet[:4]:
         ip_partes.append(str(byte))
 
     ip = ".".join(ip_partes)
     puerto = int.from_bytes(IP_packet[4:6], "big")
     ttl = IP_packet[6]
-    mensaje = IP_packet[7:]
+    identificacion = int.from_bytes(IP_packet[7:9], "big")
+    offset = int.from_bytes(IP_packet[9:11], "big")
+    tamano = int.from_bytes(IP_packet[11:15], "big")
+    flag = IP_packet[15]
+    mensaje = IP_packet[HEADER_SIZE:]
 
-    return ip, puerto, ttl, mensaje
+    return ip, puerto, ttl, identificacion, offset, tamano, flag, mensaje
 
 def create_packet(parsed_IP_packet):
-    ip, puerto, ttl, mensaje = parsed_IP_packet
+    ip, puerto, ttl, identificacion, offset, tamano, flag, mensaje = parsed_IP_packet
+
     ip_bytes = b""
 
     for numero in ip.split("."):
@@ -26,8 +32,15 @@ def create_packet(parsed_IP_packet):
 
     puerto_bytes = puerto.to_bytes(2, "big")
     ttl_bytes = ttl.to_bytes(1, "big")
+    id_bytes = identificacion.to_bytes(2, "big")
+    offset_bytes = offset.to_bytes(2, "big")
+    tamano_bytes = tamano.to_bytes(4, "big")
+    flag_bytes = flag.to_bytes(1, "big")
 
-    return ip_bytes + puerto_bytes + ttl_bytes + mensaje
+    header = ip_bytes + puerto_bytes + ttl_bytes + id_bytes
+    header += offset_bytes + tamano_bytes + flag_bytes
+
+    return header + mensaje
 
 # diccionario de indice de la proxima ruta que toca usar en cada grupo
 turnos = {}
