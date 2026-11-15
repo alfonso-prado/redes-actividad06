@@ -74,6 +74,48 @@ def fragment_IP_packet(IP_packet: bytes, MTU: int) -> list[bytes]:
 
     return fragmentos
 
+def reassemble_IP_packet(fragment_list: list[bytes]) -> bytes | None:
+    if not fragment_list:
+        return None
+
+    fragmentos = []
+
+    for fragmento in fragment_list:
+        if len(fragmento) < HEADER_SIZE:
+            return None
+
+        fragmentos.append(parse_packet(fragmento))
+
+    # el quinto campo de la tupla es el offset 
+    fragmentos.sort(key=lambda fragmento: fragmento[4])
+
+    ip, puerto, ttl, identificacion, _, _, _, _ = fragmentos[0]
+    offset_esperado = 0
+    trozos = []
+
+    for indice, fragmento in enumerate(fragmentos):
+        ip_frag, puerto_frag, _, id_frag, offset, tamano, flag, mensaje = fragmento
+
+        if (ip_frag, puerto_frag, id_frag) != (ip, puerto, identificacion):
+            return None
+
+        # si el offset no coincide, los datos no son consecutivos
+        if offset != offset_esperado or tamano != len(mensaje):
+            return None
+
+        ultimo = indice == len(fragmentos) - 1
+        flag_esperado = 0 if ultimo else 1
+
+        if flag != flag_esperado:
+            return None
+
+        trozos.append(mensaje)
+        offset_esperado += tamano
+
+    mensaje_completo = b"".join(trozos)
+
+    return create_packet((ip, puerto, ttl, identificacion, 0, len(mensaje_completo), 0, mensaje_completo))
+
 # diccionario de indice de la proxima ruta que toca usar en cada grupo
 turnos = {}
 
