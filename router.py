@@ -159,8 +159,10 @@ if __name__ == "__main__":
                 next_hop, mtu = ruta
                 ttl_salida = ttl - 1
                 paquete_reenviado = create_packet((ip, puerto, ttl_salida, identificacion, offset, tamano, flag, mensaje))
-                paquete_ip = f"{ip};{puerto};{ttl_salida};{mensaje_texto}"
+                fragmentos = fragment_IP_packet(paquete_reenviado, mtu)
                 print(f"redirigiendo paquete {paquete_ip} con destino final {destination_address} desde {(router_ip, router_puerto)} hacia {next_hop}")
-                sock.sendto(paquete_reenviado, next_hop)
+                for fragmento in fragmentos:
+                    print(f"Enviando fragmento de {len(fragmento)} bytes a {next_hop}")
+                    sock.sendto(fragmento, next_hop)
             else:
                 print(f"No hay rutas hacia {destination_address} para paquete {paquete_ip}")
