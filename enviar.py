@@ -23,9 +23,16 @@ if __name__ == "__main__":
         sys.exit("El ID debe estar entre 0 y 65535.")
 
     # paquete sale completo sin fragmentar
-    offset = 0
+    if len(sys.argv) == 8:
+        offset = 0
+        flag = 0
+    elif len(sys.argv) == 10:
+        offset = int(sys.argv[8])
+        flag = int(sys.argv[9])
+    else:
+        sys.exit("Indica el offset y el flag juntos, o deja ambos fuera.")
+
     tamano = len(mensaje_bytes)
-    flag = 0
 
     paquete = create_packet((ip_destino, puerto_destino, ttl, identificacion, offset, tamano, flag, mensaje_bytes))
 

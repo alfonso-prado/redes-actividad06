@@ -57,7 +57,7 @@ def fragment_IP_packet(IP_packet: bytes, MTU: int) -> list[bytes]:
         fin = inicio + max_datos
         trozo = mensaje[inicio:fin]
 
-        # El offset se mide desde el inicio del datagrama original.
+        # El offset se mide 
         offset_fragmento = offset + inicio
 
         # El último trozo conserva el flag del paquete que se dividió.
@@ -198,6 +198,16 @@ if __name__ == "__main__":
                 fragmentos_recibidos[identificacion] = []
 
             fragmentos_recibidos[identificacion].append(data)
+
+            # se rearma el paquete cada vez que llega otro fragmento
+            paquete_completo = reassemble_IP_packet(fragmentos_recibidos[identificacion])
+
+            if paquete_completo is not None:
+                _, _, _, _, _, _, _, mensaje_completo = parse_packet(paquete_completo)
+                print(mensaje_completo.decode(errors="replace"))
+
+                # queda libre el id para un próximo envío
+                del fragmentos_recibidos[identificacion]
         # si el destino es otro router va consultar la tabla
         else:
             ruta = check_routes(router_rutas, destination_address)
