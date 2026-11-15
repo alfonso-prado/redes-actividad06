@@ -174,6 +174,8 @@ if __name__ == "__main__":
 
     print(f"ROUTER: {router_ip}:{router_puerto}\n")
 
+    fragmentos_recibidos = {}
+
     while True:
         data, addr = sock.recvfrom(65535)
 
@@ -192,7 +194,10 @@ if __name__ == "__main__":
 
         # comprueba si el paquete esta dirigido al router actual
         if destination_address == (router_ip, router_puerto):
-            print(mensaje.decode())
+            if identificacion not in fragmentos_recibidos:
+                fragmentos_recibidos[identificacion] = []
+
+            fragmentos_recibidos[identificacion].append(data)
         # si el destino es otro router va consultar la tabla
         else:
             ruta = check_routes(router_rutas, destination_address)
