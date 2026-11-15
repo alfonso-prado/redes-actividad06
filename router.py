@@ -24,7 +24,6 @@ def parse_packet(IP_packet: bytes):
 
 def create_packet(parsed_IP_packet):
     ip, puerto, ttl, identificacion, offset, tamano, flag, mensaje = parsed_IP_packet
-
     ip_bytes = b""
 
     for numero in ip.split("."):
@@ -45,7 +44,7 @@ def create_packet(parsed_IP_packet):
 # diccionario de indice de la proxima ruta que toca usar en cada grupo
 turnos = {}
 
-def check_routes(routes_file_name: str, destination_address: tuple[str, int]) -> tuple[str, int] | None:
+def check_routes(routes_file_name: str, destination_address: tuple[str, int]) -> tuple[tuple[str, int], int] | None:
     ip_destino, puerto_destino = destination_address
     ip_destino = ipaddress.ip_address(ip_destino)
 
@@ -59,7 +58,7 @@ def check_routes(routes_file_name: str, destination_address: tuple[str, int]) ->
             if not partes or partes[0].startswith("#"):
                 continue
 
-            red, puerto_inicial, puerto_final, ip_salto, puerto_salto = partes
+            red, puerto_inicial, puerto_final, ip_salto, puerto_salto, mtu = partes
 
             # obtiene la red a partir de la ip de un host y su prefijo
             red = ipaddress.ip_network(red, strict=False)
@@ -75,7 +74,8 @@ def check_routes(routes_file_name: str, destination_address: tuple[str, int]) ->
 
                 # guarda todas las rutas posibles del primer grupo que coincide
                 if grupo == clave:
-                    rutas_posibles.append((ip_salto, int(puerto_salto)))
+                    siguiente_salto = (ip_salto, int(puerto_salto))
+                    rutas_posibles.append((siguiente_salto, int(mtu)))
 
     if not rutas_posibles:
         return None
@@ -102,12 +102,12 @@ if __name__ == "__main__":
     while True:
         data, addr = sock.recvfrom(65535)
 
-        if len(data) < 7:
+        if len(data) < HEADER_SIZE:
             continue
 
-        ip, puerto, ttl, mensaje = parse_packet(data)
+        ip, puerto, ttl, identificacion, offset, tamano, flag, mensaje = parse_packet(data)
         mensaje_texto = mensaje.decode(errors="replace")
-        paquete_ip = f"{ip};{puerto};{ttl};{mensaje_texto}"
+        paquete_ip = f"{ip};{puerto};{ttl};{identificacion};{offset};{tamano};{flag};{mensaje_texto}"
 
         if ttl == 0:
             print(f"Se recibió paquete {paquete_ip} con TTL 0")
@@ -120,11 +120,12 @@ if __name__ == "__main__":
             print(mensaje.decode())
         # si el destino es otro router va consultar la tabla
         else:
-            next_hop = check_routes(router_rutas, destination_address)
+            ruta = check_routes(router_rutas, destination_address)
 
-            if next_hop is not None:
+            if ruta is not None:
+                next_hop, mtu = ruta
                 ttl_salida = ttl - 1
-                paquete_reenviado = create_packet((ip, puerto, ttl_salida, mensaje))
+                paquete_reenviado = create_packet((ip, puerto, ttl_salida, identificacion, offset, tamano, flag, mensaje))
                 paquete_ip = f"{ip};{puerto};{ttl_salida};{mensaje_texto}"
                 print(f"redirigiendo paquete {paquete_ip} con destino final {destination_address} desde {(router_ip, router_puerto)} hacia {next_hop}")
                 sock.sendto(paquete_reenviado, next_hop)

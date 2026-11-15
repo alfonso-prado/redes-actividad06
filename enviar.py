@@ -14,10 +14,20 @@ if __name__ == "__main__":
 
     ttl = int(sys.argv[6])
 
+    identificacion = int(sys.argv[7])
+
     if not 1 <= ttl <= 255:
         sys.exit("El TTL inicial debe estar entre 1 y 255.")
 
-    paquete = create_packet((ip_destino, puerto_destino, ttl, mensaje_bytes))
+    if not 0 <= identificacion <= 65535:
+        sys.exit("El ID debe estar entre 0 y 65535.")
+
+    # paquete sale completo sin fragmentar
+    offset = 0
+    tamano = len(mensaje_bytes)
+    flag = 0
+
+    paquete = create_packet((ip_destino, puerto_destino, ttl, identificacion, offset, tamano, flag, mensaje_bytes))
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(paquete, (ip_envio, puerto_envio))
