@@ -41,6 +41,39 @@ def create_packet(parsed_IP_packet):
 
     return header + mensaje
 
+def fragment_IP_packet(IP_packet: bytes, MTU: int) -> list[bytes]:
+    if len(IP_packet) <= MTU:
+        return [IP_packet]
+
+    max_datos = MTU - HEADER_SIZE
+
+    if max_datos <= 0:
+        raise ValueError("La MTU no deja espacio para los datos.")
+
+    ip, puerto, ttl, identificacion, offset, _, flag, mensaje = parse_packet(IP_packet)
+    fragmentos = []
+
+    for inicio in range(0, len(mensaje), max_datos):
+        fin = inicio + max_datos
+        trozo = mensaje[inicio:fin]
+
+        # El offset se mide desde el inicio del datagrama original.
+        offset_fragmento = offset + inicio
+
+        # El último trozo conserva el flag del paquete que se dividió.
+        if fin < len(mensaje):
+            flag_fragmento = 1
+        else:
+            flag_fragmento = flag
+
+        fragmento = create_packet((
+            ip, puerto, ttl, identificacion, offset_fragmento,
+            len(trozo), flag_fragmento, trozo
+        ))
+        fragmentos.append(fragmento)
+
+    return fragmentos
+
 # diccionario de indice de la proxima ruta que toca usar en cada grupo
 turnos = {}
 
